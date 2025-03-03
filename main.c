@@ -17,26 +17,9 @@ Font fonts[2];
 
 CardList card_list;
 
-#define MAX_INPUT_CHARACTERS 16
-char input_text[MAX_INPUT_CHARACTERS + 1]; // + 1 for null terminator
-uint32_t input_count = 0;
-
-Clay_Color interpolate_color(Clay_Color color1, Clay_Color color2, float t)
-{
-    Clay_Color final;
-    final.r = color1.r + (color2.r - color1.r) * t;
-    final.g = color1.g + (color2.g - color1.g) * t;
-    final.b = color1.b + (color2.b - color1.b) * t;
-    final.a = 255;
-    return final;
-}
-
 Clay_ElementDeclaration
 card_item_config(Card *card, bool hovered)
 {
-    // Some nice animation for newly added cards
-    Clay_Color color = interpolate_color(CARD_COLOR, CARD_COLOR_FINAL, (card->alive_time / ALIVE_TIME_CAP));
-
     char card_id[16];
     snprintf(card_id, sizeof(card_id), "card%s", card->text);
     Clay_String string = {
@@ -48,7 +31,7 @@ card_item_config(Card *card, bool hovered)
             .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(80)},
             .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
         },
-        .backgroundColor = color,
+        .backgroundColor = CARD_COLOR_FINAL,
         .cornerRadius = 16,
     };
 }
@@ -58,15 +41,6 @@ Clay_ElementDeclaration column_header_config = (Clay_ElementDeclaration){
         .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(80)},
         .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
     },
-};
-
-Clay_ElementDeclaration input_element_config = (Clay_ElementDeclaration){
-    .layout = {
-        .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(80)},
-        .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
-    },
-    .backgroundColor = CARD_COLOR,
-    .cornerRadius = 16,
 };
 
 Clay_TextElementConfig card_text_config = (Clay_TextElementConfig){
@@ -100,21 +74,6 @@ void create_card_list(CardState state)
     }
 }
 
-void input_element(void)
-{
-    Clay_String string = {
-        .chars = input_text,
-        .length = strlen(input_text)};
-    if (input_count == 0)
-    {
-        string = CLAY_STRING("...todo");
-    }
-    CLAY(input_element_config)
-    {
-        CLAY_TEXT(string, CLAY_TEXT_CONFIG(card_text_config));
-    }
-}
-
 Clay_RenderCommandArray create_layout(void)
 {
     Clay_BeginLayout();
@@ -134,7 +93,6 @@ Clay_RenderCommandArray create_layout(void)
                     CLAY_TEXT(CLAY_STRING("TODO"), CLAY_TEXT_CONFIG(card_text_config));
                 }
                 create_card_list(CARD_TODO);
-                input_element();
             }
             CLAY({.id = CLAY_ID("RightColumn"), .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM, .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0)}, .padding = {16, 16, 16, 16}, .childGap = 16}, .backgroundColor = {150, 150, 255, 255}})
             {
@@ -151,36 +109,6 @@ Clay_RenderCommandArray create_layout(void)
 
 bool debugEnabled = false;
 
-void text_input(void)
-{
-    int key = GetCharPressed();
-    while (key > 0) // Poll until there are no more characters in buffer for this frame
-    {
-        if ((key >= 32) && (key <= 125) && (input_count < MAX_INPUT_CHARACTERS))
-        {
-            input_text[input_count] = (char)key;
-            input_text[input_count + 1] = '\0';
-            input_count++;
-        }
-
-        key = GetCharPressed(); // Poll again
-    }
-    if (IsKeyPressed(KEY_BACKSPACE))
-    {
-        if (input_count <= 0)
-            input_count = 0;
-        else
-            input_count--;
-        input_text[input_count] = '\0';
-    }
-    else if (IsKeyPressed(KEY_ENTER))
-    {
-        card_list_add(&card_list, input_text, CARD_TODO);
-        input_count = 0;
-        input_text[0] = '\0';
-    }
-}
-
 void button_callbacks(void)
 {
     if (IsMouseButtonPressed(0))
@@ -195,7 +123,6 @@ void button_callbacks(void)
                 .length = strlen(card_id)};
             if (Clay_PointerOver(Clay__HashString(string, 0, 0)))
             {
-                printf("Clicked on card with text = %s\n", card->text);
                 if (card->state == CARD_TODO)
                 {
                     card_list_move(&card_list, i, CARD_DONE);
@@ -218,7 +145,6 @@ void update_draw_frame()
     }
 
     // Update our application state
-    text_input();
     button_callbacks();
     card_list_update(&card_list, GetFrameTime());
 
@@ -289,7 +215,7 @@ int main(void)
     card_list_init(&card_list);
 
 // Put in some examples cards
-#if 0
+#if 1
     card_list_add(&card_list, "Koda", CARD_TODO);
     card_list_add(&card_list, "Sova", CARD_TODO);
     card_list_add(&card_list, "Springa", CARD_TODO);
@@ -300,9 +226,6 @@ int main(void)
         card_list_get(&card_list, i)->alive_time = ALIVE_TIME_CAP;
     }
 #endif
-
-    input_count = 0;
-    input_text[0] = '\0';
 
     while (!WindowShouldClose())
     {
