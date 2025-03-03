@@ -13,15 +13,13 @@ const uint32_t FONT_ID_BODY_16 = 0;
 const uint32_t FONT_ID_BODY_24 = 0;
 const uint32_t FONT_ID_TITLE = 0;
 
-#define MAX_INPUT_CHARACTERS 16
-
 Font fonts[2];
+
 CardList card_list;
+
+#define MAX_INPUT_CHARACTERS 16
 char input_text[MAX_INPUT_CHARACTERS + 1]; // + 1 for null terminator
 uint32_t input_count = 0;
-
-#define RAYLIB_VECTOR2_TO_CLAY_VECTOR2(vector) \
-    (Clay_Vector2) { .x = vector.x, .y = vector.y }
 
 Clay_Color interpolate_color(Clay_Color color1, Clay_Color color2, float t)
 {
@@ -153,19 +151,8 @@ Clay_RenderCommandArray create_layout(void)
 
 bool debugEnabled = false;
 
-void update_draw_frame()
+void text_input(void)
 {
-    Vector2 mouseWheelDelta = GetMouseWheelMoveV();
-    float mouseWheelX = mouseWheelDelta.x;
-    float mouseWheelY = mouseWheelDelta.y;
-
-    if (IsKeyPressed(KEY_D))
-    {
-        debugEnabled = !debugEnabled;
-        Clay_SetDebugModeEnabled(debugEnabled);
-    }
-
-    // Text input
     int key = GetCharPressed();
     while (key > 0) // Poll until there are no more characters in buffer for this frame
     {
@@ -192,8 +179,10 @@ void update_draw_frame()
         input_count = 0;
         input_text[0] = '\0';
     }
+}
 
-    // Button callbacks
+void button_callbacks(void)
+{
     if (IsMouseButtonPressed(0))
     {
         char card_id[16];
@@ -218,50 +207,85 @@ void update_draw_frame()
             }
         }
     }
+}
 
+void update_draw_frame()
+{
+    if (IsKeyPressed(KEY_D))
+    {
+        debugEnabled = !debugEnabled;
+        Clay_SetDebugModeEnabled(debugEnabled);
+    }
+
+    // Update our application state
+    text_input();
+    button_callbacks();
     card_list_update(&card_list, GetFrameTime());
 
-    //----------------------------------------------------------------------------------
-    // Handle scroll containers
-    Clay_Vector2 mousePosition = RAYLIB_VECTOR2_TO_CLAY_VECTOR2(GetMousePosition());
-    Clay_SetPointerState(mousePosition, IsMouseButtonDown(0));
-    Clay_SetLayoutDimensions((Clay_Dimensions){(float)GetScreenWidth(), (float)GetScreenHeight()});
+    // 1. Retrieve peripheral data from Raylib
+    Vector2 mouseWheelDelta = GetMouseWheelMoveV();
+    float mouseWheelX = mouseWheelDelta.x;
+    float mouseWheelY = mouseWheelDelta.y;
+    Vector2 mousePosition = GetMousePosition();
 
+    // 2. Send it to Clay
+    Clay_SetPointerState((Clay_Vector2){mousePosition.x, mousePosition.y}, IsMouseButtonDown(0));
+    Clay_SetLayoutDimensions((Clay_Dimensions){(float)GetScreenWidth(), (float)GetScreenHeight()});
     Clay_UpdateScrollContainers(true, (Clay_Vector2){mouseWheelX, mouseWheelY}, GetFrameTime());
 
+    // 1. Create a layout, note nothing is being rendered here! It's all just data right now
     Clay_RenderCommandArray renderCommands = create_layout();
 
+    // 2. Send the layout data to a renderer, in this case our Raylib renderer
     BeginDrawing();
     ClearBackground(BLACK);
     Clay_Raylib_Render(renderCommands, fonts);
     EndDrawing();
 }
 
-bool reinitializeClay = false;
-
 void HandleClayErrors(Clay_ErrorData errorData)
 {
-    printf("Clay: %s", errorData.errorText.chars);
+    printf("Clay: %s\n", errorData.errorText.chars);
+}
+
+void load_fonts()
+{
+    fonts[FONT_ID_BODY_24] = LoadFontEx("resources/Jost.ttf", 48, 0, 400);
+    if (fonts[FONT_ID_BODY_24].texture.id == 0)
+    {
+        printf("Failed to load font Jost.ttf!\n");
+        exit(0);
+    }
+    SetTextureFilter(fonts[FONT_ID_BODY_24].texture, TEXTURE_FILTER_BILINEAR);
+
+    fonts[FONT_ID_BODY_16] = LoadFontEx("resources/Jost.ttf", 32, 0, 400);
+    if (fonts[FONT_ID_BODY_24].texture.id == 0)
+    {
+        printf("Failed to load font Jost.ttf!\n");
+        exit(0);
+    }
+    SetTextureFilter(fonts[FONT_ID_BODY_16].texture, TEXTURE_FILTER_BILINEAR);
+
+    fonts[FONT_ID_TITLE] = LoadFontEx("resources/Jost.ttf", 96, 0, 400);
+    if (fonts[FONT_ID_TITLE].texture.id == 0)
+    {
+        printf("Failed to load font Jost.ttf!\n");
+        exit(0);
+    }
+    SetTextureFilter(fonts[FONT_ID_TITLE].texture, TEXTURE_FILTER_BILINEAR);
+
+    Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
 }
 
 int main(void)
 {
     // Initalise clay and raylib
-    uint64_t totalMemorySize = Clay_MinMemorySize();
-    Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(totalMemorySize, malloc(totalMemorySize));
-    Clay_Initialize(clayMemory, (Clay_Dimensions){(float)GetScreenWidth(), (float)GetScreenHeight()}, (Clay_ErrorHandler){HandleClayErrors, 0});
+    uint64_t clayMemorySize = Clay_MinMemorySize();
+    Clay_Arena clayArena = Clay_CreateArenaWithCapacityAndMemory(clayMemorySize, malloc(clayMemorySize));
+    Clay_Initialize(clayArena, (Clay_Dimensions){(float)GetScreenWidth(), (float)GetScreenHeight()}, (Clay_ErrorHandler){HandleClayErrors, NULL});
     Clay_Raylib_Initialize(680, 850, "TODO APP", FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
 
-    // Initalise fonts
-    fonts[FONT_ID_BODY_24] = LoadFontEx("resources/Jost.ttf", 48, 0, 400);
-    SetTextureFilter(fonts[FONT_ID_BODY_24].texture, TEXTURE_FILTER_BILINEAR);
-    fonts[FONT_ID_BODY_16] = LoadFontEx("resources/Jost.ttf", 32, 0, 400);
-    SetTextureFilter(fonts[FONT_ID_BODY_16].texture, TEXTURE_FILTER_BILINEAR);
-    Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
-    fonts[FONT_ID_TITLE] = LoadFontEx("resources/Jost.ttf", 96, 0, 400);
-    SetTextureFilter(fonts[FONT_ID_TITLE].texture, TEXTURE_FILTER_BILINEAR);
-    Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
-
+    load_fonts();
     card_list_init(&card_list);
 
 // Put in some examples cards
@@ -277,6 +301,7 @@ int main(void)
     }
 #endif
 
+    input_count = 0;
     input_text[0] = '\0';
 
     while (!WindowShouldClose())
