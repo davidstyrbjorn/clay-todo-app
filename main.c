@@ -127,7 +127,7 @@ Clay_RenderCommandArray create_layout(void)
 
         CLAY({.id = CLAY_ID("ColumnContainer"), .layout = {.layoutDirection = CLAY_LEFT_TO_RIGHT, .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0)}, .padding = {16, 16, 16, 16}, .childGap = 16}, .backgroundColor = BACKGROUND_COLOR})
         {
-            CLAY({.id = CLAY_ID("LeftColumn"), .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM, .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0)}, .padding = {16, 16, 16, 16}, .childGap = 16}, .backgroundColor = {150, 150, 255, 255}})
+            CLAY({.id = CLAY_ID("LeftColumn"), .cornerRadius = 16, .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM, .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0)}, .padding = {16, 16, 16, 16}, .childGap = 16}, .backgroundColor = {150, 150, 255, 255}})
             {
                 CLAY(column_header_config)
                 {
@@ -136,7 +136,7 @@ Clay_RenderCommandArray create_layout(void)
                 create_card_list(CARD_TODO);
                 input_element();
             }
-            CLAY({.id = CLAY_ID("RightColumn"), .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM, .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0)}, .padding = {16, 16, 16, 16}, .childGap = 16}, .backgroundColor = {150, 150, 255, 255}})
+            CLAY({.id = CLAY_ID("RightColumn"), .cornerRadius = 16, .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM, .sizing = {.width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0)}, .padding = {16, 16, 16, 16}, .childGap = 16}, .backgroundColor = {150, 150, 255, 255}})
             {
                 CLAY(column_header_config)
                 {
